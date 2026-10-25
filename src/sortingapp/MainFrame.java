@@ -40,29 +40,34 @@ public class MainFrame extends JFrame {
 
     private final JTextArea sortedPreview = new JTextArea();
 
-    private final DefaultTableModel previewModel =
-            new DefaultTableModel(new Object[]{}, 0) {
-                @Override
-                public boolean isCellEditable(int row, int column) {
-                    return false;
-                }
-            };
+    private static final int PAGE_SIZE = 100;
+    private int currentPreviewPage = 0;
+
+    private final JButton prevPageButton = new JButton("‹ Prev");
+    private final JButton nextPageButton = new JButton("Next ›");
+    private final JLabel pageLabel = new JLabel("Page 1");
+
+    private final DefaultTableModel previewModel = new DefaultTableModel(new Object[] {}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
 
     private final JTable previewTable = new JTable(previewModel);
 
-    private final DefaultTableModel resultsModel =
-            new DefaultTableModel(
-                    new Object[]{"Sorting Algorithm", "Execution Time (ns)"}, 0) {
-                @Override
-                public boolean isCellEditable(int row, int column) {
-                    return false;
-                }
+    private final DefaultTableModel resultsModel = new DefaultTableModel(
+            new Object[] { "Sorting Algorithm", "Execution Time (ns)" }, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
 
-                @Override
-                public Class<?> getColumnClass(int columnIndex) {
-                    return columnIndex == 1 ? Long.class : String.class;
-                }
-            };
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return columnIndex == 1 ? Long.class : String.class;
+        }
+    };
 
     private final JTable resultsTable = new JTable(resultsModel);
 
@@ -236,8 +241,30 @@ public class MainFrame extends JFrame {
         previewScroll.getVerticalScrollBar().setUnitIncrement(16);
         previewScroll.getHorizontalScrollBar().setUnitIncrement(16);
 
+        JPanel paginationPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 4));
+        paginationPanel.setOpaque(false);
+
+        styleButton(prevPageButton, new Color(231, 238, 250), NAVY);
+        prevPageButton.setPreferredSize(new Dimension(80, 26));
+        prevPageButton.setEnabled(false);
+
+        styleButton(nextPageButton, new Color(231, 238, 250), NAVY);
+        nextPageButton.setPreferredSize(new Dimension(80, 26));
+        nextPageButton.setEnabled(false);
+
+        pageLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        pageLabel.setForeground(MUTED);
+
+        paginationPanel.add(prevPageButton);
+        paginationPanel.add(pageLabel);
+        paginationPanel.add(nextPageButton);
+
+        prevPageButton.addActionListener(e -> loadPreviewPage(currentPreviewPage - 1));
+        nextPageButton.addActionListener(e -> loadPreviewPage(currentPreviewPage + 1));
+
         previewCard.add(previewHeading, BorderLayout.NORTH);
         previewCard.add(previewScroll, BorderLayout.CENTER);
+        previewCard.add(paginationPanel, BorderLayout.SOUTH);
 
         // PERFORMANCE RESULTS - EXPANDING MAIN AREA
         JPanel resultsCard = card();
@@ -278,8 +305,7 @@ public class MainFrame extends JFrame {
         rightRenderer.setBorder(new EmptyBorder(0, 0, 0, 14));
         resultsTable.getColumnModel().getColumn(1).setCellRenderer(rightRenderer);
 
-        TableRowSorter<DefaultTableModel> resultSorter =
-                new TableRowSorter<>(resultsModel);
+        TableRowSorter<DefaultTableModel> resultSorter = new TableRowSorter<>(resultsModel);
         resultsTable.setRowSorter(resultSorter);
 
         JScrollPane resultsScroll = new JScrollPane(resultsTable);
@@ -489,21 +515,8 @@ public class MainFrame extends JFrame {
                 previewModel.addColumn(column);
             }
 
-            int previewLimit = Math.min(rows.length, 100);
-
-            for (int i = 0; i < previewLimit; i++) {
-                Object[] previewRow = new Object[columns.length];
-
-                for (int j = 0; j < columns.length; j++) {
-                    previewRow[j] = rows[i] != null && j < rows[i].length
-                            && rows[i][j] != null ? rows[i][j] : "";
-                }
-
-                previewModel.addRow(previewRow);
-            }
-
-            previewInfoLabel.setText(
-                    "Showing " + previewLimit + " of " + rows.length + " rows");
+            currentPreviewPage = 0;
+            loadPreviewPage(0);
 
             for (int i = 0; i < previewTable.getColumnCount(); i++) {
                 previewTable.getColumnModel().getColumn(i).setPreferredWidth(100);
@@ -531,6 +544,11 @@ public class MainFrame extends JFrame {
             previewModel.setRowCount(0);
             previewModel.setColumnCount(0);
             resultsModel.setRowCount(0);
+
+            currentPreviewPage = 0;
+            prevPageButton.setEnabled(false);
+            nextPageButton.setEnabled(false);
+            pageLabel.setText("Page 1");
 
             fileNameLabel.setText("No CSV file selected");
             fileInfoLabel.setText("Unable to load the selected file");
@@ -622,7 +640,7 @@ public class MainFrame extends JFrame {
             resultsModel.setRowCount(0);
 
             for (PerformanceEvaluator.Result result : results) {
-                resultsModel.addRow(new Object[]{
+                resultsModel.addRow(new Object[] {
                         result.getAlgorithm(),
                         result.getTimeNs()
                 });
@@ -631,8 +649,8 @@ public class MainFrame extends JFrame {
             // Numeric execution-time sorting
             if (resultsTable.getRowSorter() instanceof TableRowSorter) {
                 @SuppressWarnings("unchecked")
-                TableRowSorter<DefaultTableModel> sorter =
-                        (TableRowSorter<DefaultTableModel>) resultsTable.getRowSorter();
+                TableRowSorter<DefaultTableModel> sorter = (TableRowSorter<DefaultTableModel>) resultsTable
+                        .getRowSorter();
 
                 sorter.setSortKeys(Collections.singletonList(
                         new RowSorter.SortKey(1, SortOrder.ASCENDING)));
@@ -688,5 +706,43 @@ public class MainFrame extends JFrame {
             runButton.setEnabled(
                     dataset != null && columnCombo.getSelectedItem() != null);
         }
+    }
+
+    private void loadPreviewPage(int page) {
+
+        if (dataset == null)
+            return;
+
+        String[] columns = dataset.getColumnNames();
+        String[][] rows = dataset.getData();
+
+        int totalRows = rows.length;
+        int totalPages = Math.max(1, (totalRows + PAGE_SIZE - 1) / PAGE_SIZE);
+
+        currentPreviewPage = page;
+
+        int start = page * PAGE_SIZE;
+        int end = Math.min(start + PAGE_SIZE, totalRows);
+
+        previewModel.setRowCount(0);
+
+        for (int i = start; i < end; i++) {
+
+            Object[] previewRow = new Object[columns.length];
+
+            for (int j = 0; j < columns.length; j++) {
+                previewRow[j] = rows[i] != null && j < rows[i].length
+                        && rows[i][j] != null ? rows[i][j] : "";
+            }
+
+            previewModel.addRow(previewRow);
+        }
+
+        previewInfoLabel.setText(
+                "Rows " + (start + 1) + "–" + end + " of " + totalRows);
+
+        pageLabel.setText("Page " + (page + 1) + " of " + totalPages);
+        prevPageButton.setEnabled(page > 0);
+        nextPageButton.setEnabled(page < totalPages - 1);
     }
 }
