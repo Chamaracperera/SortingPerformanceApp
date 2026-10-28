@@ -81,25 +81,44 @@ SortingPerformanceApp/
 │       └── SortingTest.java           # Quick standalone test for all algorithms
 │
 ├── sample/                            # Sample CSV files for testing
+├── SortingApp.jar                     # Executable Application
 └── README.md
+
 ```
 
 ---
 
 ## 🛠️ How to Run
 
+**Option A — Run the Executable Application (Windows)**
+
 ### Prerequisites
-- Java 8 or higher (JDK)
-- Any IDE (IntelliJ IDEA, Eclipse, NetBeans) or command line
+- Windows operating system
+- Java Runtime Environment (JRE) or JDK compatible with the application (Java 21 recommended)
 
 ### Steps
 
-**Option A — IDE**
-1. Open the project in your IDE
-2. Run `Main.java` as a Java application
-3. The GUI will launch automatically
 
-**Option B — Command Line**
+1. Download or clone this repository.
+2. Open the SortingPerformance/ folder.
+3. Double-click SortingApp.exe to launch the application.
+4. Upload a CSV file, select a numeric column, and run the sorting algorithms.
+
+**Note:** *The executable application created using a standard Java JAR launcher requires Java to be installed on your computer. If you receive a Java-related error, install a compatible Java runtime and try again.*
+
+**Option B — Run Using an IDE**
+
+### Prerequisites
+- Java 21 JDK recommended
+- Any IDE (IntelliJ IDEA, Eclipse, NetBeans, VS Code)
+
+### Steps
+
+1. Open the project in your IDE.
+2. Run Main.java as a Java application.
+3. The GUI will launch automatically.
+
+**Option C — Run Using the Command Line**
 ```bash
 # Compile
 javac -d out src/sortingapp/*.java
